@@ -24,16 +24,24 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
   const [isMapInitialized, setIsMapInitialized] = useState(false);
 
   const initializeMap = () => {
-    if (!mapContainer.current || !token) return;
+    if (!mapContainer.current || !token.trim()) {
+      toast.error("Please enter a valid Mapbox token");
+      return;
+    }
 
     try {
+      // Clean up existing map if it exists
+      if (map.current) {
+        map.current.remove();
+      }
+
       mapboxgl.accessToken = token;
       localStorage.setItem('mapbox_token', token);
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/light-v11",
-        center: [-74.006, 40.7128],
+        center: [-74.006, 40.7128], // Default to NYC
         zoom: 12,
       });
 
@@ -41,8 +49,8 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
       setIsMapInitialized(true);
       toast.success("Map initialized successfully");
     } catch (error) {
-      toast.error("Failed to initialize map. Please check your token.");
       console.error("Map initialization error:", error);
+      toast.error("Failed to initialize map. Please check your token.");
     }
   };
 
@@ -52,7 +60,9 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
     }
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+      }
     };
   }, [token]);
 
