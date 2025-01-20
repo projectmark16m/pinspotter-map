@@ -25,7 +25,7 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
 
   const initializeMap = async () => {
     if (!mapContainer.current || !token.trim()) {
-      toast.error("Please enter a valid Mapbox token");
+      toast.error("Please enter a Mapbox token");
       return;
     }
 
@@ -40,8 +40,10 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
         `https://api.mapbox.com/geocoding/v5/mapbox.places/test.json?access_token=${token}`
       );
       
+      const errorData = await testResponse.json();
+      
       if (!testResponse.ok) {
-        throw new Error('Invalid token');
+        throw new Error(errorData.message || 'Failed to validate Mapbox token');
       }
 
       mapboxgl.accessToken = token;
@@ -59,8 +61,8 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
       toast.success("Map initialized successfully");
     } catch (error) {
       console.error("Map initialization error:", error);
-      localStorage.removeItem('mapbox_token'); // Clear invalid token
-      toast.error("Invalid Mapbox token. Please check your token and try again.");
+      localStorage.removeItem('mapbox_token');
+      toast.error(error instanceof Error ? error.message : "Failed to initialize map");
     }
   };
 
