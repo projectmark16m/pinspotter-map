@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface MapViewProps {
   className?: string;
@@ -17,28 +20,44 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
+  const [token, setToken] = useState(localStorage.getItem('mapbox_token') || '');
+  const [isMapInitialized, setIsMapInitialized] = useState(false);
+
+  const initializeMap = () => {
+    if (!mapContainer.current || !token) return;
+
+    try {
+      mapboxgl.accessToken = token;
+      localStorage.setItem('mapbox_token', token);
+
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/light-v11",
+        center: [-74.006, 40.7128],
+        zoom: 12,
+      });
+
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+      setIsMapInitialized(true);
+      toast.success("Map initialized successfully");
+    } catch (error) {
+      toast.error("Failed to initialize map. Please check your token.");
+      console.error("Map initialization error:", error);
+    }
+  };
 
   useEffect(() => {
-    if (!mapContainer.current) return;
-
-    mapboxgl.accessToken = "YOUR_MAPBOX_TOKEN";
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/light-v11",
-      center: [-74.006, 40.7128],
-      zoom: 12,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+    if (token && !isMapInitialized) {
+      initializeMap();
+    }
 
     return () => {
       map.current?.remove();
     };
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !isMapInitialized) return;
 
     // Clear existing markers
     Object.values(markersRef.current).forEach((marker) => marker.remove());
@@ -73,7 +92,30 @@ const MapView: React.FC<MapViewProps> = ({ className, markers }) => {
       });
       map.current.fitBounds(bounds, { padding: 50 });
     }
-  }, [markers]);
+  }, [markers, isMapInitialized]);
+
+  if (!isMapInitialized) {
+    return (
+      <div className="p-4 bg-white/80 backdrop-blur rounded-lg shadow-sm ring-1 ring-black/5">
+        <h3 className="text-lg font-medium mb-4">Enter your Mapbox Token</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          To use this map, you need to provide your Mapbox public token. You can find it in your Mapbox account dashboard at{" "}
+          <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+            mapbox.com
+          </a>
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="pk.eyJ1..."
+            className="flex-1"
+          />
+          <Button onClick={initializeMap}>Initialize Map</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("relative w-full h-full min-h-[400px]", className)}>
